@@ -1,0 +1,45 @@
+version: '3.2'
+networks:
+    proxy:
+        external: true 
+volumes:
+  vault_data:
+
+services:
+  vault:
+    image: "hashicorp/vault:latest"
+    container_name: "vault"
+    hostname: "vault"
+    ports:
+      - "8200:8200"
+    networks:
+      - proxy
+    volumes:
+      - "./vault.d:/vault/config"
+      - vault_data:/vault/data
+      - "./certs:/certs"
+      - "./logs:/vault/logs"
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: "http://0.0.0.0:8200"
+    entrypoint: vault server -config=/vault/config/vault.hcl
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vault.entrypoints=websecure"
+      - "traefik.http.routers.vault.rule=Host(`vault.svc.spakl`)"
+            
+      - "traefik.http.routers.vault.tls=true"
+      - "traefik.http.routers.vault.service=vault"
+      - "traefik.http.routers.vault.loadBalancer.server.port=8200"
+      - "traefik.http.routers.vault.loadBalancer.server.scheme=http"
+            
+      - "traefik.http.services.vault.loadbalancer.healthcheck.followredirects=true"    
+      - "traefik.http.services.vault.loadbalancer.healthcheck.hostname=vault"
+      - "traefik.http.services.vault.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.vault.loadbalancer.healthcheck.path=/v1/sys/health"
+      - "traefik.http.services.vault.loadbalancer.healthcheck.method=GET"
+      - "traefik.http.services.vault.loadbalancer.healthcheck.port=8200"
+      - "traefik.http.services.vault.loadbalancer.healthcheck.scheme=http"
+      - "traefik.http.services.vault.loadbalancer.healthcheck.timeout=5s"
+
